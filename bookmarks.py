@@ -88,7 +88,7 @@ def resolve_one_dm(dm):
             tweet = api.get_status(re.sub(r"^[^_]*status/", '', url))
         except:
             print(f"Tweet {url} has already been deleted! Skipping...")
-            api.destroy_direct_message(dm.id)
+            continue
         url_dict['author'] = tweet.author.screen_name
         url_dict['content'] = tweet.text
         try: url_dict['message'] = dm.message_create['message_data']['text']
