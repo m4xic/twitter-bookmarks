@@ -54,7 +54,7 @@ def one_airtable(url, author, content, archive_url , message=""):
             "Content-Type": "application/json"
         }
     )
-    logging.debug(f"Posted one Tweet to Airtable: {url}")
+    print(f"Archived one Tweet to Airtable: {url}")
 
     if "id" not in req.json().keys() or req.status_code != 200:
         print(f"Airtable response error: {req.text}")
