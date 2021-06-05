@@ -28,5 +28,8 @@
     "TWITTER_ACCESS_TOKEN_SECRET": {
         "description": "Your Twitter API access token secret."
     }
+  },
+  "scripts": {
+      "postdeploy": "pip install -r requirements.txt"
   }
 }
