@@ -1,0 +1,32 @@
+{
+  "name": "Twitter Bookmarks Bot",
+  "description": "This app does one little thing, and does it well.",
+  "keywords": [
+    "twitter", "airtable", "bookmarks"
+  ],
+  "website": "https://chun.si",
+  "repository": "https://github.com/m4xic/twitter-bookmarks",
+  "env": {
+    "AIRTABLE_BASE": {
+      "description": "The Airtable base to store your bookmarks in."
+    },
+    "AIRTABLE_TABLE": {
+        "description": "The Airtable table to store your bookmarks in."
+    },
+    "AIRTABLE_API_KEY": {
+        "description": "Your Airtable API key."
+    },
+    "TWITTER_CONSUMER_KEY": {
+        "description": "Your Twitter API consumer key."
+    },
+    "TWITTER_CONSUMER_SECRET": {
+        "description": "Your Twitter API consumer secret."
+    },
+    "TWITTER_ACCESS_TOKEN": {
+        "description": "Your Twitter API access token."
+    },
+    "TWITTER_ACCESS_TOKEN_SECRET": {
+        "description": "Your Twitter API access token secret."
+    }
+  }
+}
