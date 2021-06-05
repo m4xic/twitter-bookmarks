@@ -11,21 +11,21 @@ import waybackpy
 
 ## SETUP
 logging.basicConfig(format='%(asctime)s %(levelname)s - %(message)s', level=logging.WARNING)
-logging.info("Logging started")
+print("Logging started")
 
 load_dotenv()
-logging.info("Loaded .env variables")
+print("Loaded .env variables")
 
 airtable_endpoint = "https://api.airtable.com/v0/" + os.environ.get("AIRTABLE_BASE")  + "/" + os.environ.get("AIRTABLE_TABLE")
-logging.info(f"Airtable endpoint set to {airtable_endpoint}")
+print(f"Airtable endpoint set to {airtable_endpoint}")
 
 try:
     auth = tweepy.OAuthHandler(os.environ.get("TWITTER_CONSUMER_KEY"), os.environ.get("TWITTER_CONSUMER_SECRET"))
     auth.set_access_token(os.environ.get("TWITTER_ACCESS_TOKEN"), os.environ.get("TWITTER_ACCESS_TOKEN_SECRET"))
     api = tweepy.API(auth)
 except tweepy.TweepError as e:
-    logging.fatal(f"Could not log in to Twitter API! {e.reason}")
-logging.info("Logged in to Twitter API!")
+    print(f"Could not log in to Twitter API! {e.reason}")
+print("Logged in to Twitter API!")
 
 def one_airtable(url, author, content, archive_url , message=""):
     """
@@ -57,7 +57,7 @@ def one_airtable(url, author, content, archive_url , message=""):
     logging.debug(f"Posted one Tweet to Airtable: {url}")
 
     if "id" not in req.json().keys() or req.status_code != 200:
-        logging.error(f"Airtable response error: {req.text}")
+        print(f"Airtable response error: {req.text}")
 
 def resolve_one_dm(dm):
     """
@@ -84,7 +84,11 @@ def resolve_one_dm(dm):
     for url in twitter_urls:
         url_dict = {}
         url_dict['url'] = url
-        tweet = api.get_status(re.sub(r"^[^_]*status/", '', url))
+        try:
+            tweet = api.get_status(re.sub(r"^[^_]*status/", '', url))
+        except:
+            print(f"Tweet {url} has already been deleted! Skipping...")
+            api.destroy_direct_message(dm.id)
         url_dict['author'] = tweet.author.screen_name
         url_dict['content'] = tweet.text
         try: url_dict['message'] = dm.message_create['message_data']['text']
@@ -95,8 +99,8 @@ def resolve_one_dm(dm):
 
 def check_new_twitter():
     new_dms = api.list_direct_messages(50)
-    if not new_dms: logging.info("No new DMs found in the inbox.")
-    else: logging.info(f"{len(new_dms)} found in the inbox.")
+    if not new_dms: print("No new DMs found in the inbox.")
+    else: print(f"{len(new_dms)} found in the inbox.")
     return new_dms
 
 def main():
