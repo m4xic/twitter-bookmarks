@@ -1,1 +1,1 @@
-web: python3 bookmarks.py
+worker: python3 bookmarks.py
