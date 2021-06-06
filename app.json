@@ -33,6 +33,7 @@
         "description": "Your Twitter API access token secret."
     }
   },
+  "stack": "heroku-18",
   "buildpacks": [
     {
       "url": "heroku/python"
