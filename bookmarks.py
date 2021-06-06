@@ -85,9 +85,11 @@ def resolve_one_dm(dm):
         url_dict = {}
         url_dict['url'] = url
         try:
-            tweet = api.get_status(re.sub(r"^[^_]*status/", '', url))
-        except:
-            print(f"Tweet {url} has already been deleted! Skipping...")
+            tw_id = url.split("status/")[-1]
+            tweet = api.get_status(tw_id)
+        except tweepy.TweepError as e:
+            print(f"Tweet {tw_id} has already been deleted! Skipping...")
+            print(f"{e} {e.reason}")
             continue
         url_dict['author'] = tweet.author.screen_name
         url_dict['content'] = tweet.text
