@@ -107,12 +107,17 @@ def check_new_twitter():
 
 def main():
     while True:
-        new_dms = check_new_twitter()
-        if not new_dms: sleep(90)
-        else:
-            for dm in new_dms:
-                for result in resolve_one_dm(dm):
-                    one_airtable(result['url'], result['author'], result['content'], waybackpy.Url(result['url']).save().archive_url, message=result['message'])
-            sleep(30)
+        try:
+            new_dms = check_new_twitter()
+            if not new_dms: sleep(90)
+            else:
+                for dm in new_dms:
+                    for result in resolve_one_dm(dm):
+                        one_airtable(result['url'], result['author'], result['content'], waybackpy.Url(result['url']).save().archive_url, message=result['message'])
+                sleep(30)
+        except tweepy.RateLimitError:
+            print("Rate limited!")
+            sleep(900)
+            continue
 
 main()
