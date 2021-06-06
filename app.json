@@ -9,7 +9,7 @@
   "env": {
     "TESSDATA_PREFIX": {
       "description": "The folder Tesseract is installed in",
-      "default": "/app/.apt/usr/share/tesseract-ocr/4.00/tessdata"
+      "value": "/app/.apt/usr/share/tesseract-ocr/4.00/tessdata"
     },
     "AIRTABLE_BASE": {
       "description": "The Airtable base to store your bookmarks in."
