@@ -35,6 +35,9 @@
     },
     {
       "url": "https://github.com/matteotiziano/heroku-buildpack-tesseract"
+    },
+    {
+      "url": "https://github.com/heroku/heroku-buildpack-apt"
     }
   ]
 }
