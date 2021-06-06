@@ -1,5 +1,2 @@
-leptonica
-libpng
-libjpeg
-libtiff
-zlib
+tesseract-ocr
+tesseract-ocr-eng

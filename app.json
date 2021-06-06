@@ -7,6 +7,10 @@
   "website": "https://chun.si",
   "repository": "https://github.com/m4xic/twitter-bookmarks",
   "env": {
+    "TESSDATA_PREFIX": {
+      "description": "The folder Tesseract is installed in",
+      "default": "/app/.apt/usr/share/tesseract-ocr/4.00/tessdata"
+    },
     "AIRTABLE_BASE": {
       "description": "The Airtable base to store your bookmarks in."
     },
@@ -32,9 +36,6 @@
   "buildpacks": [
     {
       "url": "heroku/python"
-    },
-    {
-      "url": "https://github.com/matteotiziano/heroku-buildpack-tesseract"
     },
     {
       "url": "https://github.com/heroku/heroku-buildpack-apt"
