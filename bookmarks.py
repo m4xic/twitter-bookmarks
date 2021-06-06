@@ -103,7 +103,7 @@ def resolve_one_dm(dm):
         if "media" in tweet.extended_entities:
             for media_item in tweet.extended_entities['media']:
                 if media_item['type'] == 'photo':
-                    ocr += Image.open(pytesseract.image_to_string(StringIO(requests.get(url).content))) + '\n'
+                    ocr += Image.open(pytesseract.image_to_string(StringIO(requests.get(media_item['media_url']).content))) + '\n'
                 else: continue
         url_dict['ocr'] = ocr
         tweets.append(url_dict)
