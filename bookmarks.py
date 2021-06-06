@@ -4,14 +4,15 @@ import tweepy
 import requests
 from dotenv import load_dotenv
 import os
-import logging
 from time import sleep
 import re
 import waybackpy
+import pytesseract
+from PIL import Image
+from io import StringIO
 
 ## SETUP
-logging.basicConfig(format='%(asctime)s %(levelname)s - %(message)s', level=logging.WARNING)
-print("Logging started")
+print("twitter-bookmarks started")
 
 load_dotenv()
 print("Loaded .env variables")
@@ -27,7 +28,7 @@ except tweepy.TweepError as e:
     print(f"Could not log in to Twitter API! {e.reason}")
 print("Logged in to Twitter API!")
 
-def one_airtable(url, author, content, archive_url , message=""):
+def one_airtable(url, author, content, archive_url, ocr="", message=""):
     """
     Adds one record to the Airtable endpoint.
 
@@ -46,7 +47,8 @@ def one_airtable(url, author, content, archive_url , message=""):
                 "Tweet author": author,
                 "Tweet content": content,
                 "Archive URL": archive_url,
-                "Message": message
+                "Message": message,
+                "Image OCR": ocr
             }
         },
         headers={
@@ -88,32 +90,46 @@ def resolve_one_dm(dm):
             tw_id = url.split("status/")[-1]
             tweet = api.get_status(tw_id)
         except tweepy.TweepError as e:
-            print(f"Tweet {tw_id} has already been deleted! Skipping...")
+            print(f"Looks like tweet {url} ({tw_id}) has already been deleted! Skipping...")
             print(f"{e} {e.reason}")
             continue
         url_dict['author'] = tweet.author.screen_name
         url_dict['content'] = tweet.text
         try: url_dict['message'] = dm.message_create['message_data']['text']
         except: url_dict['message'] = ''
+
+        ocr = ''''''
+
+        if "media" in tweet.extended_entities:
+            for media_item in tweet.extended_entities['media']:
+                if media_item['type'] == 'photo':
+                    ocr += Image.open(pytesseract.image_to_string(StringIO(requests.get(url).content))) + '\n'
+                else: continue
+        url_dict['ocr'] = ocr
         tweets.append(url_dict)
     api.destroy_direct_message(dm.id)
     return tweets
 
-def check_new_twitter():
+def check_new_twitter(old_dms):
     new_dms = api.list_direct_messages(50)
-    if not new_dms: print("No new DMs found in the inbox.")
-    else: print(f"{len(new_dms)} found in the inbox.")
+    if not new_dms and new_dms != old_dms:
+        print("No new DMs found in the inbox.")
+    elif not new_dms and new_dms == old_dms:
+        pass # No need to spam output to the console
+    else:
+        print(f"{len(new_dms)} found in the inbox.")
     return new_dms
 
 def main():
     while True:
+        new_dms = []
         try:
-            new_dms = check_new_twitter()
+            new_dms = check_new_twitter(new_dms)
             if not new_dms: sleep(90)
             else:
                 for dm in new_dms:
                     for result in resolve_one_dm(dm):
-                        one_airtable(result['url'], result['author'], result['content'], waybackpy.Url(result['url']).save().archive_url, message=result['message'])
+                        one_airtable(result['url'], result['author'], result['content'], waybackpy.Url(result['url']).save().archive_url, message=result['message'], ocr=result['ocr'])
                 sleep(30)
         except tweepy.RateLimitError:
             print("Rate limited!")
