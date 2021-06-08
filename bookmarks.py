@@ -99,12 +99,12 @@ def resolve_one_dm(dm):
         except: url_dict['message'] = ''
 
         ocr = ''''''
-
-        if "media" in tweet.extended_entities:
-            for media_item in tweet.extended_entities['media']:
-                if media_item['type'] == 'photo':
-                    ocr += pytesseract.image_to_string(Image.open(BytesIO(requests.get(media_item['media_url']).content))) + '\n'
-                else: continue
+        if "extended_entities" in dir(tweet):
+            if "media" in tweet.extended_entities:
+                for media_item in tweet.extended_entities['media']:
+                    if media_item['type'] == 'photo':
+                        ocr += pytesseract.image_to_string(Image.open(BytesIO(requests.get(media_item['media_url']).content))) + '\n'
+                    else: continue
         url_dict['ocr'] = ocr
         tweets.append(url_dict)
     api.destroy_direct_message(dm.id)
