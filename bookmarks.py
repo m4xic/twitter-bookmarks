@@ -42,7 +42,7 @@ def one_webhook(url, archive_url, message=""):
     req = requests.post(
         webhook_endpoint,
         json={
-            'content': message + '```\n```' + url + ' *archived at <' + archive_url + '>'
+            'text': '```\n' + message + '\n```\n' + url + '\n> *Archived at <' + archive_url + '>*'
         },
         headers={'Content-Type': 'application/json'}
     )
