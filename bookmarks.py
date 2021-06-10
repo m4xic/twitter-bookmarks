@@ -42,7 +42,7 @@ def one_webhook(url, archive_url, message=""):
     req = requests.post(
         webhook_endpoint,
         json={
-            'text': message + '\n' + url + ' *archived at <' + archive_url + '>'
+            'text': message + '```\n```' + url + ' *archived at <' + archive_url + '>'
         },
         headers={'Content-Type': 'application/json'}
     )
@@ -152,7 +152,10 @@ def main():
             else:
                 for dm in new_dms:
                     for result in resolve_one_dm(dm):
-                        one_airtable(result['url'], result['author'], result['content'], waybackpy.Url(result['url']).save().archive_url, message=result['message'], ocr=result['ocr'])
+                        if os.environ.get("BOOKMARKS_MODE").lower() == "airtable":
+                            one_airtable(result['url'], result['author'], result['content'], waybackpy.Url(result['url']).save().archive_url, message=result['message'], ocr=result['ocr'])
+                        elif os.environ.get("BOOKMARKS_MODE").lower() == "webhook":
+                            one_webhook(result['url'], waybackpy.Url(result['url']).save().archive_url, message=result['message'])
                 sleep(30)
         except tweepy.RateLimitError:
             print("Rate limited!")
