@@ -22,7 +22,7 @@ if os.environ.get("BOOKMARKS_MODE").lower() == "airtable":
     print("Sending results to Airtable")
     airtable_endpoint = "https://api.airtable.com/v0/" + os.environ.get("AIRTABLE_BASE")  + "/" + os.environ.get("AIRTABLE_TABLE")
     print(f"Airtable endpoint set to {airtable_endpoint}")
-if os.environ.get("BOOKMARKS_MODE").lower() == "webhook":
+elif os.environ.get("BOOKMARKS_MODE").lower() == "webhook":
     print("Sending results to Webhook")
     webhook_endpoint = os.environ.get("WEBHOOK_URL")
     print(f"Webhook endpoint set to {webhook_endpoint}")
