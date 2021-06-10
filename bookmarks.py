@@ -46,10 +46,10 @@ def one_webhook(url, archive_url, message=""):
         },
         headers={'Content-Type': 'application/json'}
     )
-    print(f"Archived one Tweet to Webhook: {url}")
+    print(f"Sent one Tweet to Webhook: {url}")
 
-    if req.status_code != 200:
-        print(f"Webhook response error: {req.text}")
+    if req.status_code not in [200, 201]:
+        print(f"Webhook response error: {req.status_code} {req.text}")
 
 def one_airtable(url, author, content, archive_url, ocr="", message=""):
     """
@@ -79,7 +79,7 @@ def one_airtable(url, author, content, archive_url, ocr="", message=""):
             "Content-Type": "application/json"
         }
     )
-    print(f"Archived one Tweet to Airtable: {url}")
+    print(f"Sent one Tweet to Airtable: {url}")
 
     if "id" not in req.json().keys() or req.status_code != 200:
         print(f"Airtable response error: {req.text}")
