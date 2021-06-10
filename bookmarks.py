@@ -38,6 +38,14 @@ except tweepy.TweepError as e:
     print(f"Could not log in to Twitter API! {e.reason}")
 print("Logged in to Twitter API!")
 
+def archive_url(url):
+    try:
+        return waybackpy.Url(url).save().archive_url
+    except Exception as e:
+        print(f"Could not archive {url}\n{e.__traceback__}")
+        return "<could not archive>"
+
+
 def one_webhook(url, archive_url, message=""):
     req = requests.post(
         webhook_endpoint,
@@ -153,9 +161,9 @@ def main():
                 for dm in new_dms:
                     for result in resolve_one_dm(dm):
                         if os.environ.get("BOOKMARKS_MODE").lower() == "airtable":
-                            one_airtable(result['url'], result['author'], result['content'], waybackpy.Url(result['url']).save().archive_url, message=result['message'], ocr=result['ocr'])
+                            one_airtable(result['url'], result['author'], result['content'], archive_url(result['url']), message=result['message'], ocr=result['ocr'])
                         elif os.environ.get("BOOKMARKS_MODE").lower() == "webhook":
-                            one_webhook(result['url'], waybackpy.Url(result['url']).save().archive_url, message=result['message'])
+                            one_webhook(result['url'], archive_url(result['url']), message=result['message'])
                         else:
                             print("Shouldn't get here. Send help: " + os.environ.get("BOOKMARKS_MODE").lower())
         except tweepy.RateLimitError:
