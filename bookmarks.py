@@ -10,6 +10,7 @@ import waybackpy
 import pytesseract
 from PIL import Image
 from io import BytesIO
+from sys import exit
 
 ## SETUP
 print("twitter-bookmarks started")
@@ -17,8 +18,17 @@ print("twitter-bookmarks started")
 load_dotenv()
 print("Loaded .env variables")
 
-airtable_endpoint = "https://api.airtable.com/v0/" + os.environ.get("AIRTABLE_BASE")  + "/" + os.environ.get("AIRTABLE_TABLE")
-print(f"Airtable endpoint set to {airtable_endpoint}")
+if os.environ.get("BOOKMARKS_MODE").lower() == "airtable":
+    print("Sending results to Airtable")
+    airtable_endpoint = "https://api.airtable.com/v0/" + os.environ.get("AIRTABLE_BASE")  + "/" + os.environ.get("AIRTABLE_TABLE")
+    print(f"Airtable endpoint set to {airtable_endpoint}")
+if os.environ.get("BOOKMARKS_MODE").lower() == "webhook":
+    print("Sending results to Webhook")
+    webhook_endpoint = os.environ.get("WEBHOOK_URL")
+    print(f"Webhook endpoint set to {webhook_endpoint}")
+else:
+    print(f"invalid mode set! { os.environ.get('BOOKMARKS_MODE') }")
+    exit(1)
 
 try:
     auth = tweepy.OAuthHandler(os.environ.get("TWITTER_CONSUMER_KEY"), os.environ.get("TWITTER_CONSUMER_SECRET"))
@@ -27,6 +37,19 @@ try:
 except tweepy.TweepError as e:
     print(f"Could not log in to Twitter API! {e.reason}")
 print("Logged in to Twitter API!")
+
+def one_webhook(url, archive_url, message=""):
+    req = requests.post(
+        webhook_endpoint,
+        json={
+            'text': message + '\n' + url + ' *archived at <' + archive_url + '>'
+        },
+        headers={'Content-Type': 'application/json'}
+    )
+    print(f"Archived one Tweet to Webhook: {url}")
+
+    if req.status_code != 200:
+        print(f"Webhook response error: {req.text}")
 
 def one_airtable(url, author, content, archive_url, ocr="", message=""):
     """

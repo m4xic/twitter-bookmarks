@@ -1,24 +1,27 @@
 {
   "name": "Twitter Bookmarks Bot",
-  "description": "This app does one little thing, and does it well.",
+  "description": "This app allows you to send Tweets to a Twitter bot and archive them for later elsewhere.",
   "keywords": [
-    "twitter", "airtable", "bookmarks"
+    "twitter", "airtable", "bookmarks", "webhook", "discord", "slack"
   ],
   "website": "https://chun.si",
   "repository": "https://github.com/m4xic/twitter-bookmarks",
   "env": {
+    "BOOKMARKS_MODE": {
+      "description": "Where should your tweets be archived to? (case-insensitive, either AIRTABLE or WEBHOOK)"
+    },
     "TESSDATA_PREFIX": {
       "description": "The folder Tesseract is installed in",
       "value": "/app/.apt/usr/share/tesseract-ocr/4.00/tessdata"
     },
     "AIRTABLE_BASE": {
-      "description": "The Airtable base to store your bookmarks in."
+      "description": "The Airtable base to store your bookmarks in. (ignored if in Webhook mode)"
     },
     "AIRTABLE_TABLE": {
-        "description": "The Airtable table to store your bookmarks in."
+        "description": "The Airtable table to store your bookmarks in. (ignored if in Webhook mode)"
     },
     "AIRTABLE_API_KEY": {
-        "description": "Your Airtable API key."
+        "description": "Your Airtable API key. (ignored if in Webhook mode)"
     },
     "TWITTER_CONSUMER_KEY": {
         "description": "Your Twitter API consumer key."
@@ -31,6 +34,9 @@
     },
     "TWITTER_ACCESS_TOKEN_SECRET": {
         "description": "Your Twitter API access token secret."
+    },
+    "WEBHOOK_URL": {
+        "description": "The webhook endpoint to send Tweets to. (ignored if in Airtable mode)"
     }
   },
   "stack": "heroku-18",
