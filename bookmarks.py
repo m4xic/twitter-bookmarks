@@ -156,7 +156,8 @@ def main():
                             one_airtable(result['url'], result['author'], result['content'], waybackpy.Url(result['url']).save().archive_url, message=result['message'], ocr=result['ocr'])
                         elif os.environ.get("BOOKMARKS_MODE").lower() == "webhook":
                             one_webhook(result['url'], waybackpy.Url(result['url']).save().archive_url, message=result['message'])
-                sleep(30)
+                        else:
+                            print("Shouldn't get here. Send help: " + os.environ.get("BOOKMARKS_MODE").lower())
         except tweepy.RateLimitError:
             print("Rate limited!")
             sleep(900)
