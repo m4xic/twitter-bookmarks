@@ -11,6 +11,7 @@ import pytesseract
 from PIL import Image
 from io import BytesIO
 from sys import exit
+import traceback
 
 ## SETUP
 print("twitter-bookmarks started")
@@ -42,7 +43,7 @@ def archive_url(url):
     try:
         return waybackpy.Url(url).save().archive_url
     except Exception as e:
-        print(f"Could not archive {url}\n{e.__traceback__}")
+        traceback.print_exc()
         return "<could not archive>"
 
 
