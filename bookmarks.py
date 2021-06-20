@@ -71,9 +71,9 @@ class Bot:
     def check_dms(self):
         new_dms = self.api.list_direct_messages(50)
         if not new_dms:
-            print("No new DMs found in the inbox.")
+            print(f"No new DMs found in the {self.name} inbox.")
         else:
-            print(f"{len(new_dms)} found in the inbox.")
+            print(f"{len(new_dms)} found in the {self.name} inbox.")
         return new_dms
     
     def submit_airtable(self, url="", author="", content="", archive_url="", ocr="", message="", **kwargs):
@@ -140,7 +140,7 @@ class Bot:
 def main():
     bots = []
     for bot_config in config['bots']:
-        if 'airtable_key' in bot_config:
+        if 'airtable_api_key' in bot_config:
             bots.append(Bot(bot_config['name'], bot_config['mode'], bot_config['airtable_endpoint'], bot_config['twitter_consumer_key'], bot_config['twitter_consumer_secret'], bot_config['twitter_access_token'], bot_config['twitter_access_token_secret'], airtable_key=bot_config['airtable_api_key']))
         else:
             bots.append(Bot(bot_config['name'], bot_config['mode'], bot_config['webhook_endpoint'], bot_config['twitter_consumer_key'], bot_config['twitter_consumer_secret'], bot_config['twitter_access_token'], bot_config['twitter_access_token_secret']))
