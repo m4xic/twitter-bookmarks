@@ -1,0 +1,24 @@
+{
+    "bots": [
+        {
+            "name": "Webhook",
+            "mode": "webhook",
+            "webhook_endpoint": "",
+            "twitter_consumer_key": "",
+            "twitter_consumer_secret": "",
+            "twitter_access_token": "",
+            "twitter_access_token_secret": ""
+        },
+        {
+            "name": "Airtable",
+            "mode": "airtable",
+            "airtable_base": "",
+            "airtable_table": "",
+            "airtable_api_key": "",
+            "twitter_consumer_key": "",
+            "twitter_consumer_secret": "",
+            "twitter_access_token": "",
+            "twitter_access_token_secret": ""
+        }
+    ]
+}
