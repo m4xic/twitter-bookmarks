@@ -48,7 +48,7 @@ class Bot:
             tweet_data['author'] = tweet_object.author.screen_name
             tweet_data['content'] = tweet_object.text
             # This reverse split removes the t.co link included in the message by default
-            tweet_data['message'] = dm.message_create['message_data']['text'].rsplit(' ', 1)[0]
+            tweet_data['message'] = dm.message_create['message_data']['text'][:-23]
             ocr = ""
             if "extended_entities" in dir(tweet_object) and ENABLE_OCR and self.mode in ["airtable"]:
                 if "media" in tweet_object.extended_entities:
@@ -108,7 +108,7 @@ class Bot:
         """
         req = requests.post(
             self.endpoint,
-            json={'text': '```\n' + content + '\n```\n```' + message + '\n```\n' + url + '\n> *Archived at <' + archive_url + '>*'},
+            json={'text': '**__Tweet content__**\n```\n' + content + '\n```\n**__DM message__**\n```' + message + '\n```\n**__Original Tweet URL__**\n' + url + '\n> *Archived at <' + archive_url + '>*'},
             headers={'Content-Type': 'application/json'}
         )
         print(f"Sent one Tweet to Webhook: {url}")
