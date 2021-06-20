@@ -7,169 +7,160 @@ import os
 from time import sleep
 import re
 import waybackpy
-import pytesseract
-from PIL import Image
 from io import BytesIO
 from sys import exit
 import traceback
+from base64 import b64decode
+from json import loads
 
 ## SETUP
 print("twitter-bookmarks started")
 
 load_dotenv()
-print("Loaded .env variables")
-
-if os.environ.get("BOOKMARKS_MODE").lower() == "airtable":
-    print("Sending results to Airtable")
-    airtable_endpoint = "https://api.airtable.com/v0/" + os.environ.get("AIRTABLE_BASE")  + "/" + os.environ.get("AIRTABLE_TABLE")
-    print(f"Airtable endpoint set to {airtable_endpoint}")
-elif os.environ.get("BOOKMARKS_MODE").lower() == "webhook":
-    print("Sending results to Webhook")
-    webhook_endpoint = os.environ.get("WEBHOOK_URL")
-    print(f"Webhook endpoint set to {webhook_endpoint}")
-else:
-    print(f"invalid mode set! { os.environ.get('BOOKMARKS_MODE') }")
-    exit(1)
-
+print("Loading your config...")
+raw_config = b64decode(os.environ.get("TB_B64_CONFIG"))
 try:
-    auth = tweepy.OAuthHandler(os.environ.get("TWITTER_CONSUMER_KEY"), os.environ.get("TWITTER_CONSUMER_SECRET"))
-    auth.set_access_token(os.environ.get("TWITTER_ACCESS_TOKEN"), os.environ.get("TWITTER_ACCESS_TOKEN_SECRET"))
-    api = tweepy.API(auth)
-except tweepy.TweepError as e:
-    print(f"Could not log in to Twitter API! {e.reason}")
-print("Logged in to Twitter API!")
+    config = loads(raw_config)
+except ValueError as e:
+    print(f"Invalid base64/json config found! {e.with_traceback}")
 
-def archive_url(url):
-    try:
-        return waybackpy.Url(url).save().archive_url
-    except Exception as e:
-        traceback.print_exc()
-        return "<could not archive>"
+ENABLE_OCR = os.getenv("ENABLE_OCR", 'False').lower() in ('true', '1', 't')
 
+if ENABLE_OCR:
+    import pytesseract
+    from PIL import Image
 
-def one_webhook(url, archive_url, message=""):
-    req = requests.post(
-        webhook_endpoint,
-        json={
-            'text': '```\n' + message + '\n```\n' + url + '\n> *Archived at <' + archive_url + '>*'
-        },
-        headers={'Content-Type': 'application/json'}
-    )
-    print(f"Sent one Tweet to Webhook: {url}")
+class Bot:
+    def resolve_dm(self, dm):
+        twitter_urls = []
+        for url in dm.message_create['message_data']['entities']['urls']:
+            if re.match(r"https?:\/\/(www.)?twitter.com\/.*\/status\/[0-9]+", url['expanded_url']): twitter_urls.append(url['expanded_url'])
+        tweets = []
+        for tweet_url in twitter_urls:
+            tweet_data = {}
+            tweet_data['url'] = tweet_url
+            tweet_data['id'] = tweet_url.split('status/')[-1]
+            try:
+                tweet_object = self.api.get_status(tweet_data['id'])
+            except tweepy.TweepError:
+                print(f"Looks like that Tweet ({tweet_data['id']}) has already been deleted.")
+                continue
+            tweet_data['author'] = tweet_object.author.screen_name
+            tweet_data['content'] = tweet_object.text
+            # This reverse split removes the t.co link included in the message by default
+            tweet_data['message'] = dm.message_create['message_data']['text'].rsplit(' ', 1)[0]
+            ocr = ""
+            if "extended_entities" in dir(tweet_object) and ENABLE_OCR and self.mode in ["airtable"]:
+                if "media" in tweet_object.extended_entities:
+                    for media_item in tweet_object.extended_entities['media']:
+                        if media_item['type'] == 'photo':
+                            ocr += pytesseract.image_to_string(Image.open(BytesIO(requests.get(media_item['media_url']).content))) + '\n'
+                        else: continue
+            tweet_data['ocr'] = ocr
+            tweets.append(tweet_data)
+        self.api.destroy_direct_message(dm.id)
+        return tweets
 
-    if req.status_code not in [200, 201]:
-        print(f"Webhook response error: {req.status_code} {req.text}")
-
-def one_airtable(url, author, content, archive_url, ocr="", message=""):
-    """
-    Adds one record to the Airtable endpoint.
-
-    Parameters:
-    - url: URL of the Tweet to be stored
-    - author: Author of the Tweet
-    - content: Content of the Tweet being stored
-    - message: (optional) Message that was sent alongside the link
-    - archive_url: The URL from the Wayback Machine
-    """
-    req = requests.post(
-        airtable_endpoint,
-        json={
-            "fields": {
-                "Tweet URL": url,
-                "Tweet author": author,
-                "Tweet content": content,
-                "Archive URL": archive_url,
-                "Message": message,
-                "Image OCR": ocr
-            }
-        },
-        headers={
-            "Authorization": "Bearer " + os.environ.get("AIRTABLE_API_KEY"),
-            "Content-Type": "application/json"
-        }
-    )
-    print(f"Sent one Tweet to Airtable: {url}")
-
-    if "id" not in req.json().keys() or req.status_code != 200:
-        print(f"Airtable response error: {req.text}")
-
-def resolve_one_dm(dm):
-    """
-    Gets the details of all Tweets linked in one DM.
-
-    Parameters:
-    - dm_id: ID of the DM
-
-    Returns:
-    - url: URL of the embedded Tweet
-    - id: status ID of the Tweet
-    - author: Author of the Tweet
-    - content: Content of the Tweet
-    - message: (optional) Message associated with the DM
-    """
-    found_urls = []
-    for url in dm.message_create['message_data']['entities']['urls']:
-        found_urls.append(url['expanded_url'])
-    twitter_urls = []
-    for url in found_urls:
-        if re.match(r"https?:\/\/(www.)?twitter.com\/.*\/status\/[0-9]+", url):
-            twitter_urls.append(url)
-    tweets = []
-    for url in twitter_urls:
-        url_dict = {}
-        url_dict['url'] = url
+    def archive_url(self, url):
         try:
-            tw_id = url.split("status/")[-1]
-            tweet = api.get_status(tw_id)
+            return waybackpy.Url(url).save().archive_url
+        except Exception as e:
+            traceback.print_exc()
+            return "<could not archive>"
+
+    def check_dms(self):
+        new_dms = self.api.list_direct_messages(50)
+        if not new_dms:
+            print("No new DMs found in the inbox.")
+        else:
+            print(f"{len(new_dms)} found in the inbox.")
+        return new_dms
+    
+    def submit_airtable(self, url="", author="", content="", archive_url="", ocr="", message="", **kwargs):
+        """
+        Adds one record to the Airtable endpoint.
+
+        Parameters:
+        - url: URL of the Tweet to be stored
+        - author: Author of the Tweet
+        - content: Content of the Tweet being stored
+        - archive_url: The URL from the Wayback Machine
+        - ocr: (optional) Tesseract result for the image OCR
+        - message: (optional) Message that was sent alongside the link
+        """
+        req = requests.post(
+            self.endpoint,
+            json={"fields": {"Tweet URL": url, "Tweet author": author, "Tweet content": content, "Archive URL": archive_url, "Message": message, "Image OCR": ocr}},
+            headers={"Authorization": "Bearer " + self.airtable_key, "Content-Type": "application/json"}
+        )
+
+        print(f"Sent one Tweet to Airtable: {url}")
+        if "id" not in req.json().keys() or req.status_code != 200: print(f"Airtable response error: {req.text}")
+
+    def submit_webhook(self, url="", content="", archive_url="", message="", **kwargs):
+        """
+        Sends one URL to the webhook endpoint.
+        
+        Parameters:
+        - url: URL of the Tweet to be stored
+        - archive_url: The URL from the Wayback Machine
+        - message: (optional) Message that was sent alongside the link
+        """
+        req = requests.post(
+            self.endpoint,
+            json={'text': '```\n' + content + '\n```\n```' + message + '\n```\n' + url + '\n> *Archived at <' + archive_url + '>*'},
+            headers={'Content-Type': 'application/json'}
+        )
+        print(f"Sent one Tweet to Webhook: {url}")
+        if req.status_code not in [200, 201]: print(f"Webhook response error: {req.status_code} {req.text}")
+
+    def __init__(self, name, mode, endpoint, twitter_consumer_key, twitter_consumer_secret, twitter_access_token, twitter_access_token_secret, airtable_key=None):
+        self.name = name
+        self.mode = mode
+        self.endpoint = endpoint
+        try:
+            auth = tweepy.OAuthHandler(twitter_consumer_key, twitter_consumer_secret)
+            auth.set_access_token(twitter_access_token, twitter_access_token_secret)
+            self.api = tweepy.API(auth)
         except tweepy.TweepError as e:
-            print(f"Looks like tweet {url} ({tw_id}) has already been deleted! Skipping...")
-            print(f"{e} {e.reason}")
-            continue
-        url_dict['author'] = tweet.author.screen_name
-        url_dict['content'] = tweet.text
-        try: url_dict['message'] = dm.message_create['message_data']['text']
-        except: url_dict['message'] = ''
+            print(f"Could not log in to Twitter API! {e.reason}")
+            exit(1)
 
-        ocr = ''''''
-        if "extended_entities" in dir(tweet):
-            if "media" in tweet.extended_entities:
-                for media_item in tweet.extended_entities['media']:
-                    if media_item['type'] == 'photo':
-                        ocr += pytesseract.image_to_string(Image.open(BytesIO(requests.get(media_item['media_url']).content))) + '\n'
-                    else: continue
-        url_dict['ocr'] = ocr
-        tweets.append(url_dict)
-    api.destroy_direct_message(dm.id)
-    return tweets
-
-def check_new_twitter(old_dms):
-    new_dms = api.list_direct_messages(50)
-    if not new_dms and new_dms != old_dms:
-        print("No new DMs found in the inbox.")
-    elif not new_dms and new_dms == old_dms:
-        pass # No need to spam output to the console
-    else:
-        print(f"{len(new_dms)} found in the inbox.")
-    return new_dms
+        if mode == "airtable" and airtable_key != None:
+            self.airtable_key = airtable_key
+            self.submit = self.submit_airtable
+            print(f"Configured Airtable Bot object for {name}")
+        elif mode == "webhook":
+            self.submit = self.submit_webhook
+            print(f"Configured Webhook Bot object for {name}")
+        else:
+            print(f"Bot object not configured correctly. {mode=} {airtable_key=} {endpoint=}")
+            exit(1)
 
 def main():
+    bots = []
+    for bot_config in config['bots']:
+        if 'airtable_key' in bot_config:
+            bots.append(Bot(bot_config['name'], bot_config['mode'], bot_config['airtable_endpoint'], bot_config['twitter_consumer_key'], bot_config['twitter_consumer_secret'], bot_config['twitter_access_token'], bot_config['twitter_access_token_secret'], airtable_key=bot_config['airtable_api_key']))
+        else:
+            bots.append(Bot(bot_config['name'], bot_config['mode'], bot_config['webhook_endpoint'], bot_config['twitter_consumer_key'], bot_config['twitter_consumer_secret'], bot_config['twitter_access_token'], bot_config['twitter_access_token_secret']))
+    
     while True:
-        new_dms = []
         try:
-            new_dms = check_new_twitter(new_dms)
-            if not new_dms: sleep(90)
-            else:
-                for dm in new_dms:
-                    for result in resolve_one_dm(dm):
-                        if os.environ.get("BOOKMARKS_MODE").lower() == "airtable":
-                            one_airtable(result['url'], result['author'], result['content'], archive_url(result['url']), message=result['message'], ocr=result['ocr'])
-                        elif os.environ.get("BOOKMARKS_MODE").lower() == "webhook":
-                            one_webhook(result['url'], archive_url(result['url']), message=result['message'])
-                        else:
-                            print("Shouldn't get here. Send help: " + os.environ.get("BOOKMARKS_MODE").lower())
+            for bot in bots:
+                new_dms = bot.check_dms()
+                if new_dms:
+                    for dm in new_dms:
+                        for result in bot.resolve_dm(dm):
+                            bot.submit(url=result['url'], author=result['author'], content=result['content'], archive_url=bot.archive_url(result['url']), ocr=result['ocr'], message=result['message'])
         except tweepy.RateLimitError:
-            print("Rate limited!")
+            print("Rate limited! Stopping for 15 minutes.")
             sleep(900)
             continue
+        except tweepy.TweepError as te:
+            print("Problem with the Twitter API!")
+            print(f"{te.with_traceback}")
+            exit(1)
+        sleep(60)
 
 main()
