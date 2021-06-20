@@ -3,4 +3,4 @@ requests==2.25.1
 waybackpy==2.4.3
 python-dotenv==0.17.1
 pytesseract==0.3.7
-pillow==8.1.2
+pillow==8.2.0
